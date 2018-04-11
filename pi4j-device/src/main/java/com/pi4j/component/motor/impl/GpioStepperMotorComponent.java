@@ -43,6 +43,7 @@ public class GpioStepperMotorComponent extends StepperMotorBase {
     private MotorState currentState = MotorState.STOP;
     private GpioStepperMotorControl controlThread = new GpioStepperMotorControl();
     private int sequenceIndex = 0;
+    private volatile boolean interrupted = false;
 
     /**
      * using this constructor requires that the consumer
@@ -77,6 +78,10 @@ public class GpioStepperMotorComponent extends StepperMotorBase {
     @Override
     public MotorState getState() {
         return currentState;
+    }
+    
+    public void interrupt() {
+        interrupted = true;
     }
 
     /**
@@ -155,15 +160,21 @@ public class GpioStepperMotorComponent extends StepperMotorBase {
             setState(MotorState.STOP);
             return;
         }
+        
+        interrupted = false;
 
         // perform step in positive or negative direction from current position
         if (steps > 0){
-            for(long index = 1; index <= steps; index++)
+            for(long index = 1; index <= steps; index++) {
+                if (interrupted) break;
                 doStep(true);
+            }
         }
         else {
-            for(long index = steps; index < 0; index++)
+            for(long index = steps; index < 0; index++) {
+                if (interrupted) break;
                 doStep(false);
+            }
         }
 
         // stop motor movement
